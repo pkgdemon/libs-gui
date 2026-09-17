@@ -108,6 +108,7 @@
 #import "AppKit/NSWindow.h"
 #import "AppKit/NSScreen.h"
 #import "GNUstepGUI/GSDisplayServer.h"
+#import "GNUstepGUI/GSTheme.h"
 #import "GNUstepGUI/GSServicesManager.h"
 #import "GSGuiPrivate.h"
 
@@ -126,6 +127,7 @@ static NSImage	*folderImage = nil;
 static NSImage	*multipleFiles = nil;
 static NSImage	*unknownApplication = nil;
 static NSImage	*unknownTool = nil;
+static NSImage	*unknownFiletype = nil;
 
 static NSLock   *classLock = nil;
 static NSLock   *mlock = nil;
@@ -472,6 +474,7 @@ static id GSLaunched(NSNotification *notification, BOOL active)
 	    role: (NSString*)role
 	     app: (NSString**)app;
 - (void) _workspacePreferencesChanged: (NSNotification *)aNotification;
+- (void) _themeDidActivate: (NSNotification*)notification;
 
 // application communication
 - (BOOL) _launchApplication: (NSString*)appName
@@ -780,6 +783,13 @@ static NSDictionary		*urlPreferences = nil;
     addObserver: self
     selector: @selector(noteUserDefaultsChanged)
     name: NSUserDefaultsDidChangeNotification
+    object: nil];
+
+  /* Icons come from the theme; drop cached ones when it changes. */
+  [[NSNotificationCenter defaultCenter]
+    addObserver: self
+    selector: @selector(_themeDidActivate:)
+    name: GSThemeDidActivateNotification
     object: nil];
 
   /* There's currently no way of knowing if things have changed due to
@@ -2973,17 +2983,29 @@ launchIdentifiers: (NSArray **)identifiers
   return nil;
 }
 
+/* Forget icons obtained from the previous theme, so that -iconForFile:
+ * and friends return the images of the newly activated theme.
+ */
+- (void) _themeDidActivate: (NSNotification*)notification
+{
+  DESTROY(folderImage);
+  DESTROY(unknownApplication);
+  DESTROY(unknownTool);
+  DESTROY(unknownFiletype);
+  multipleFiles = nil;
+  [folderIconCache removeAllObjects];
+  [_iconMap removeAllObjects];
+}
+
 /** Returns the default icon to display for a file */
 - (NSImage*) unknownFiletypeImage
 {
-  static NSImage *image = nil;
-
-  if (image == nil)
+  if (unknownFiletype == nil)
     {
-      image = RETAIN([NSImage _standardImageWithName: @"Unknown"]);
+      unknownFiletype = RETAIN([NSImage _standardImageWithName: @"Unknown"]);
     }
 
-  return image;
+  return unknownFiletype;
 }
 
 /** Try to create the image in an exception handling context */

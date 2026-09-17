@@ -408,6 +408,20 @@ typedef	struct {
       /* Establish the theme specified by the user defaults (if any);
        */
       [self defaultsDidChange: nil];
+      /* Follow later changes of the GSTheme default. +setTheme: registers
+       * this observer too, but it is never called when the application
+       * starts with the default theme, which left such applications unable
+       * to switch themes at all. Remove first to avoid a duplicate.
+       */
+      [[NSNotificationCenter defaultCenter]
+	removeObserver: self
+		  name: NSUserDefaultsDidChangeNotification
+		object: nil];
+      [[NSNotificationCenter defaultCenter]
+	addObserver: self
+	   selector: @selector(defaultsDidChange:)
+	       name: NSUserDefaultsDidChangeNotification
+	     object: nil];
     }
 }
 
